@@ -1072,8 +1072,6 @@
 
 
 
-
-
 ##
 # @GuestQueryMemUsage:
 # @usage: Mem usage in guest OS
@@ -1087,8 +1085,6 @@
 # @guest-query-mem-usage:
 #
 # Query the mem usage in guest OS.
-#
-# @delay: seconds
 #
 # Returns: Mem usage on success.
 #
