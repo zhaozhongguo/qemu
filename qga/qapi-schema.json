@@ -1042,3 +1042,32 @@
   'data':    { 'path': 'str', '*arg': ['str'], '*env': ['str'],
                '*input-data': 'str', '*capture-output': 'bool' },
   'returns': 'GuestExec' }
+
+
+  
+#=== BEGIN === add by zhaozhongguo 2017.07.25
+##
+# @GuestQueryCpuUsage:
+# @usage: CPU usage in guest OS
+#
+# Since: 2.5
+##
+{ 'struct': 'GuestQueryCpuUsage',
+  'data': { 'usage': 'str'} }
+
+##
+# @guest-query-cpu-usage:
+#
+# Query the cpu usage in guest OS.
+#
+# @delay: seconds
+#
+# Returns: CPU usage on success.
+#
+# Since: 2.5
+##
+{ 'command': 'guest-query-cpu-usage',
+  'data':    { 'delay': 'int'},
+  'returns': 'GuestQueryCpuUsage' }
+
+#=== END === add by zhaozhongguo 2017.07.25

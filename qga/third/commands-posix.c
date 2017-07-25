@@ -61,12 +61,12 @@ struct cpu_stat
 };
 
 
-int read_cpu_stat(struct cpu_stat* stat)
+void read_cpu_stat(struct cpu_stat* stat, Error **errp)
 {
     if (NULL == stat)
     {
-        perror("Invalid param.");
-        return RET_FAILURE;
+        error_setg(errp, "invalid param: stat");
+        return;
     }
     memset((char*)stat, 0, sizeof(struct cpu_stat));
     
@@ -75,13 +75,15 @@ int read_cpu_stat(struct cpu_stat* stat)
     fd = fopen("/proc/stat", "r");
     if (!fd)
     {
-        perror("Failed to open /proc/stat.");
-        return RET_FAILURE;
+        error_setg(errp, "failed to open /proc/stat.");
+        return;
     }
 
     int ready = 0;
-    while(fgets(buff, sizeof(buff), fd)) {
-        if(NULL != strstr(buff, "cpu")) {
+    while(fgets(buff, sizeof(buff), fd)) 
+    {
+        if(NULL != strstr(buff, "cpu")) 
+        {
             ready = 1;
             break;
         }
@@ -90,9 +92,9 @@ int read_cpu_stat(struct cpu_stat* stat)
     
     if(!ready)
     {
-        perror("Failed to read cpu line from /proc/stat.");
+        error_setg(errp, "failed to read cpu line from /proc/stat.");
         fclose(fd);
-        return RET_FAILURE;
+        return;
     }
     
     int seq = 0;
@@ -162,24 +164,32 @@ int read_cpu_stat(struct cpu_stat* stat)
     }
 
     fclose(fd);
-    
-    return RET_SUCCESS;
 }
 
 
-void calculate_cpu_usage(int delay)
+void calculate_cpu_usage(int delay, char *usage, Error **errp)
 {
-    struct cpu_stat old_cpu_stat;
-    if (RET_FAILURE == read_cpu_stat(&old_cpu_stat))
+    if (NULL == usage)
     {
+        error_setg(errp, "invalid param: usage");
         return;
     }
+
+    Error *local_err = NULL;
     
+    struct cpu_stat old_cpu_stat;
+    read_cpu_stat(&old_cpu_stat, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
+    }
+
     sleep(delay);
     
     struct cpu_stat new_cpu_stat;
-    if (RET_FAILURE == read_cpu_stat(&new_cpu_stat))
-    {
+    read_cpu_stat(&new_cpu_stat, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
         return;
     }
 
@@ -192,8 +202,26 @@ void calculate_cpu_usage(int delay)
     long long int diff_busy = diff_total - (new_cpu_stat.idle - old_cpu_stat.idle);
     double cpu_usage = (double)diff_busy / (double)diff_total * 100.0;
     
-    printf("cpu usage : %.1f \n", cpu_usage);
+    sprintf(usage, "%.1f", cpu_usage);
+}
+
+
+
+GuestQueryCpuUsage *qmp_guest_query_cpu_usage(int delay, Error **err)
+{
+    Error *local_err = NULL;
+    char buf[8] = {0,};
     
+    calculate_cpu_usage(delay, buf, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return NULL;
+    }
+
+    GuestQueryCpuUsage *gusage = g_malloc0(sizeof(*gusage));
+    gusage->usage = g_strdup(buf);
+
+    return gusage;
 }
 
 
