@@ -1,11 +1,10 @@
 /*
  * QEMU Guest Agent win32-specific command implementations
  *
- * Copyright IBM Corp. 2012
+ * Copyright IBM Corp. 2017
  *
  * Authors:
- *  Michael Roth      <mdroth@linux.vnet.ibm.com>
- *  Gal Hammer        <ghammer@redhat.com>
+ *  zhaozhongguo
  *
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
