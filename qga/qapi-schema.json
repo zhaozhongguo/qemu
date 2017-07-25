@@ -1070,4 +1070,31 @@
   'data':    { 'delay': 'int'},
   'returns': 'GuestQueryCpuUsage' }
 
+
+
+
+
+##
+# @GuestQueryMemUsage:
+# @usage: Mem usage in guest OS
+#
+# Since: 2.5
+##
+{ 'struct': 'GuestQueryMemUsage',
+  'data': { 'usage': 'str'} }
+
+##
+# @guest-query-mem-usage:
+#
+# Query the mem usage in guest OS.
+#
+# @delay: seconds
+#
+# Returns: Mem usage on success.
+#
+# Since: 2.5
+##
+{ 'command': 'guest-query-mem-usage',
+  'returns': 'GuestQueryMemUsage' }
+
 #=== END === add by zhaozhongguo 2017.07.25

@@ -30,3 +30,23 @@ GuestQueryCpuUsage *qmp_guest_query_cpu_usage(int64_t delay, Error **errp)
 }
 
 
+
+GuestQueryMemUsage *qmp_guest_query_mem_usage(Error **errp)
+{
+    Error *local_err = NULL;
+    char buf[8] = {0,};
+
+    calculate_mem_usage(buf, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return NULL;
+    }
+
+    GuestQueryMemUsage *gusage = g_malloc0(sizeof(*gusage));
+    gusage->usage = g_strdup(buf);
+
+    return gusage;
+}
+
+
+

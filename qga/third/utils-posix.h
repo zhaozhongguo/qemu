@@ -60,10 +60,15 @@ struct cpu_stat
     long long guest_nice;
 };
 
-//read cpu stat from /proc/stat
-void read_cpu_stat(struct cpu_stat* stat, Error **errp);
-
-//calculate cpu usage
 void calculate_cpu_usage(int delay, char *usage, Error **errp);
+
+
+//mem info struct
+struct mem_stat {
+    long memtotal;
+    long memfree;
+};
+
+void calculate_mem_usage(char *usage, Error **errp);
 
 #endif

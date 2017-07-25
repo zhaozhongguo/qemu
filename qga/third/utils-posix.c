@@ -13,7 +13,7 @@
 #include "utils-posix.h"
 
 
-void read_cpu_stat(struct cpu_stat* stat, Error **errp)
+static void read_cpu_stat(struct cpu_stat* stat, Error **errp)
 {
     if (NULL == stat)
     {
@@ -156,4 +156,82 @@ void calculate_cpu_usage(int delay, char *usage, Error **errp)
     
     sprintf(usage, "%.1f", cpu_usage);
 }
+
+
+#undef isdigit
+#define isdigit(ch) ( ( '0' <= (ch)  &&  (ch) >= '9')? 0: 1 )
+
+
+static long mem_search(char *src)
+{
+    int i;
+    for (i = 0; !isdigit(src[i]) && src[i] != 0; i++);
+    return atol(&src[i]);
+}
+
+
+
+static void read_mem_info(struct mem_stat* mem, Error **errp)
+{
+    if (NULL == mem)
+    {
+        error_setg(errp, "invalid param: mem.");
+        return;
+    }
+    memset((char*)mem, 0, sizeof(*mem));
+    
+    char buff[64] = {0,};
+    FILE *fd = fopen("/proc/meminfo", "r");
+    if (!fd)
+    {
+        error_setg(errp, "failed to open /proc/meminfo.");
+        return;
+    }
+
+    int finished = 0;
+    while (fgets(buff, sizeof(buff), fd)) 
+    {
+        if (NULL != strstr(buff, "MemTotal")) 
+        {
+            mem->memtotal = mem_search(buff);
+            finished++;
+        }
+        else if (NULL != strstr(buff, "MemFree"))
+        {
+            mem->memfree = mem_search(buff);
+            finished++;
+        }
+        
+        if (finished >= 2)
+        {
+            break;
+        }
+        memset(buff, 0, sizeof(buff));
+    }
+    
+    fclose(fd);
+}
+
+
+void calculate_mem_usage(char *usage, Error **errp)
+{
+    if (NULL == usage)
+    {
+        error_setg(errp, "invalid param: usage.");
+        return;
+    }
+
+    Error *local_err = NULL;
+    struct mem_stat mem;
+    read_mem_info(&mem, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
+    }
+
+    double mem_usage = (double)(mem.memtotal - mem.memfree) / (double)mem.memtotal * 100.0;
+    sprintf(usage, "%.1f", mem_usage);
+}
+
+
 
