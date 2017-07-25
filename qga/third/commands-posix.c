@@ -61,7 +61,7 @@ struct cpu_stat
 };
 
 
-void read_cpu_stat(struct cpu_stat* stat, Error **errp)
+static void read_cpu_stat(struct cpu_stat* stat, Error **errp)
 {
     if (NULL == stat)
     {
@@ -167,7 +167,7 @@ void read_cpu_stat(struct cpu_stat* stat, Error **errp)
 }
 
 
-void calculate_cpu_usage(int delay, char *usage, Error **errp)
+static void calculate_cpu_usage(int delay, char *usage, Error **errp)
 {
     if (NULL == usage)
     {
@@ -207,7 +207,7 @@ void calculate_cpu_usage(int delay, char *usage, Error **errp)
 
 
 
-GuestQueryCpuUsage *qmp_guest_query_cpu_usage(int delay, Error **err)
+GuestQueryCpuUsage *qmp_guest_query_cpu_usage(int64_t delay, Error **errp)
 {
     Error *local_err = NULL;
     char buf[8] = {0,};
