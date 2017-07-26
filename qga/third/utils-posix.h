@@ -71,4 +71,8 @@ struct mem_stat {
 
 void calculate_mem_usage(char *usage, Error **errp);
 
+
+//disk info struct
+
+
 #endif

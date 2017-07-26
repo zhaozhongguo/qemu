@@ -1093,4 +1093,49 @@
 { 'command': 'guest-query-mem-usage',
   'returns': 'GuestQueryMemUsage' }
 
+
+
+##
+# @GuestDiskStat:
+#
+# Information about guest disk io stat info.
+#
+# @name: name of the disk device
+#
+# @rd_ops: disk device read ops
+#
+# @wr_ops: disk device write ops
+#
+# @rd_kbs: disk device read kb/s
+#
+# @wr_kbs: disk device write kb/s
+#
+# Since: 2.5
+##
+{ 'struct': 'GuestDiskStat',
+  'data': { 'name': 'str', 'rd_ops': 'str', 'wr_ops': 'str', 'rd_kbs': 'str', 'wr_kbs': 'str' } }
+
+##
+# @GuestQueryDiskStat:
+#
+# Information about guest disk stat.
+#
+# @disk_stat: Information about guest disk stat
+#
+# Since: 2.5
+##
+{ 'struct': 'GuestQueryDiskStat',
+  'data': { 'disk_stat': ['GuestDiskStat'] } }
+##
+# @guest-query-disk-stat:
+#
+# Get information about the guest disk.
+#
+# Returns: @GuestQueryDiskStat
+#
+# Since: 2.5
+##
+{ 'command': 'guest-query-disk-stat',
+  'returns': 'GuestQueryDiskStat' }
+
 #=== END === add by zhaozhongguo 2017.07.25
