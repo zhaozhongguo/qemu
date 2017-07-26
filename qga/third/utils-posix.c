@@ -10,6 +10,11 @@
  * See the COPYING file in the top-level directory.
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <limits.h>
 #include "utils-posix.h"
 
 
@@ -232,6 +237,189 @@ void calculate_mem_usage(char *usage, Error **errp)
     double mem_usage = (double)(mem.memtotal - mem.memfree) / (double)mem.memtotal * 100.0;
     sprintf(usage, "%.1f", mem_usage);
 }
+
+
+
+#define SYSFS_BLOCK "/sys/block"
+
+
+
+//test whether given name is a device or a partition
+static int is_device(char *name, int allow_virtual)
+{
+	char syspath[PATH_MAX];
+	char *slash;
+
+	/* Some devices may have a slash in their name (eg. cciss/c0d0...) */
+	while ((slash = strchr(name, '/'))) {
+		*slash = '!';
+	}
+	snprintf(syspath, sizeof(syspath), "%s/%s%s", SYSFS_BLOCK, name,
+		 allow_virtual ? "" : "/device");
+
+	return !(access(syspath, F_OK));
+}
+
+
+//counting devices and partition number
+int get_diskstats_dev_nr(void)
+{
+        FILE *fp;
+        char line[256];
+        if (NULL == (fp = fopen("/proc/diskstats", "r")))
+        {
+            return 0;
+        }
+
+        int dev = 0;
+        //counting devices is simply a matter of counting the number of lines...
+        while (NULL != fgets(line, sizeof(line), fp)) 
+        {
+            dev++;
+        }
+
+        fclose(fp);
+
+        return dev;
+}
+
+
+
+
+//allocate structures for disk devices
+static struct disk_stat_list* alloc_disk_list(int len, Error **errp)
+{
+    if (len <= 0)
+    {
+        error_setg(errp, "invalid param: len.");
+        return NULL;
+    }
+    
+    struct disk_stat_list* disk_list = (struct disk_stat_list*)malloc(sizeof(struct disk_stat_list));
+    if (NULL == disk_list)
+    {
+        error_setg(errp, "failed to malloc struct disk_stat_list.");
+        return NULL;
+    }
+    memset((char*)disk_list, 0, sizeof(struct disk_stat_list));
+    
+    int size = sizeof(struct disk_stat) * len;
+	disk_list->list = (struct disk_stat*) malloc(size);
+    if (NULL != disk_list->list)
+    {
+        memset((char*)disk_list->list, 0, size);
+        disk_list->capacity = len;
+    }
+    else
+    {
+        free(disk_list);
+        error_setg(errp, "failed to malloc struct disk_stat.");
+        return NULL;
+    }
+    
+    return disk_list;
+}
+
+
+//free mem for disk devices
+void free_disk_list(struct disk_stat_list* disk_list)
+{
+    if (NULL != disk_list)
+    {
+        if (NULL != disk_list->list)
+        {
+            free(disk_list->list);
+        }
+        
+        free(disk_list);
+    }
+}
+
+
+//read disk stats
+struct disk_stat_list* read_diskstats(int length, Error **errp)
+{
+    FILE *fp;
+    if (NULL == (fp = fopen("/proc/diskstats", "r")))
+    {
+        error_setg(errp, "failed to open /proc/diskstats.");
+        return NULL;
+    }
+    
+    Error *local_err = NULL;
+
+    struct disk_stat_list* disk_list = alloc_disk_list(length, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        fclose(fp);
+        return NULL;
+    }
+
+    char line[256] = {0,};
+    int ret = 0;
+    
+    unsigned int major = 0;
+    unsigned int minor = 0;
+    char dev_name[MAX_NAME_LEN] = {0,};
+    unsigned long ios_pgr = 0;
+    unsigned long tot_ticks = 0;
+    unsigned long rq_ticks = 0;
+    unsigned long wr_ticks = 0;
+    unsigned long rd_ios = 0;
+    unsigned long rd_merges_or_rd_sec = 0;
+    unsigned long wr_ios = 0;
+    unsigned long wr_merges = 0;
+    unsigned long rd_sec_or_wr_ios = 0;
+    unsigned long wr_sec = 0;
+    unsigned long rd_ticks_or_wr_sec = 0;
+    struct disk_stat* pStat = NULL;
+    while (NULL != fgets(line, sizeof(line), fp)) 
+    {
+        // major minor name rio rmerge rsect ruse wio wmerge wsect wuse running use aveq
+        ret = sscanf(line, "%u %u %s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
+	        &major, &minor, dev_name,
+		&rd_ios, &rd_merges_or_rd_sec, &rd_sec_or_wr_ios, &rd_ticks_or_wr_sec,
+		&wr_ios, &wr_merges, &wr_sec, &wr_ticks, &ios_pgr, &tot_ticks, &rq_ticks);
+
+        if (ret == 14) 
+        {
+            //only disk device selectd
+            if (!is_device(dev_name, TRUE))
+            {
+                continue;
+            }
+            
+            if (disk_list->length < disk_list->capacity)
+            {
+                pStat = &(disk_list->list[disk_list->length++]);
+                pStat->major      = major;
+                pStat->minor      = minor;
+                strncpy(pStat->dk_name, dev_name, MAX_NAME_LEN - 1);
+                pStat->rd_ios     = rd_ios;
+                pStat->rd_merges  = rd_merges_or_rd_sec;
+                pStat->rd_sectors = rd_sec_or_wr_ios;
+                pStat->rd_ticks   = rd_ticks_or_wr_sec;
+                pStat->wr_ios     = wr_ios;
+                pStat->wr_merges  = wr_merges;
+                pStat->wr_sectors = wr_sec;
+                pStat->wr_ticks   = wr_ticks;
+                pStat->ios_pgr    = ios_pgr;
+                pStat->tot_ticks  = tot_ticks;
+                pStat->rq_ticks   = rq_ticks;
+                
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+    
+    fclose(fp);
+    
+    return disk_list;
+}
+
 
 
 

@@ -45,6 +45,8 @@ extern char **environ;
 #endif
 
 
+#define DEFAULT_DELAY 1
+
 //cpu stat struct
 struct cpu_stat 
 {    
@@ -74,5 +76,41 @@ void calculate_mem_usage(char *usage, Error **errp);
 
 //disk info struct
 
+#define MAX_NAME_LEN 128
+
+struct disk_stat 
+{
+    unsigned int major;
+    unsigned int minor;
+    char dk_name[MAX_NAME_LEN];
+    unsigned long rd_ios;
+    unsigned long rd_merges;
+    unsigned long rd_sectors;
+    unsigned long rd_ticks;
+    unsigned long wr_ios;
+    unsigned long wr_merges;
+    unsigned long wr_sectors;
+    unsigned long wr_ticks;
+    unsigned long ios_pgr;
+    unsigned long tot_ticks;
+    unsigned long rq_ticks;
+};
+
+
+struct disk_stat_list
+{
+    struct disk_stat* list;
+    int length;
+    int capacity;
+};
+
+//counting devices and partition number
+int get_diskstats_dev_nr(void);
+
+//free mem for disk devices
+void free_disk_list(struct disk_stat_list* disk_list);
+
+//read disk stats
+struct disk_stat_list* read_diskstats(int length, Error **errp);
 
 #endif
