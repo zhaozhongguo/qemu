@@ -109,12 +109,12 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
     int index = 0;
     double rd_ops = 0.0;
     double wr_ops = 0.0;
-    double rd_kbs = 0.0;
-    double wr_kbs = 0.0;
+    double rd_octet = 0.0;
+    double wr_octet = 0.0;
     char str_rd_ops[64] = {0,};
     char str_wr_ops[64] = {0,};
-    char str_rd_kbs[64] = {0,};
-    char str_wr_kbs[64] = {0,};
+    char str_rd_octet[64] = {0,};
+    char str_wr_octet[64] = {0,};
     struct disk_stat* old_stat = NULL;
     struct disk_stat* new_stat = NULL;
 
@@ -133,20 +133,20 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
         
         rd_ops = (double)(new_stat->rd_ios - old_stat->rd_ios) / time_diff;
         wr_ops = (double)(new_stat->wr_ios - old_stat->wr_ios) / time_diff;
-        rd_kbs = (double)(new_stat->rd_sectors - old_stat->rd_sectors) / time_diff / 2.0;  //one sector => 512byte
-        wr_kbs = (double)(new_stat->wr_sectors - old_stat->wr_sectors) / time_diff / 2.0;
+        rd_octet = (double)(new_stat->rd_sectors - old_stat->rd_sectors) / time_diff * 512.0;  //one sector => 512byte
+        wr_octet = (double)(new_stat->wr_sectors - old_stat->wr_sectors) / time_diff * 512.0;
         
         sprintf(str_rd_ops, "%.2f", rd_ops);
         sprintf(str_wr_ops, "%.2f", wr_ops);
-        sprintf(str_rd_kbs, "%.2f", rd_kbs);
-        sprintf(str_wr_kbs, "%.2f", wr_kbs);
+        sprintf(str_rd_octet, "%.2f", rd_octet);
+        sprintf(str_wr_octet, "%.2f", wr_octet);
  
         guest_disk_stat = g_new0(GuestDiskStat, 1);
         guest_disk_stat->name = g_strdup(new_stat->dk_name);
         guest_disk_stat->rd_ops = g_strdup(str_rd_ops);
         guest_disk_stat->wr_ops = g_strdup(str_wr_ops);
-        guest_disk_stat->rd_kbs = g_strdup(str_rd_kbs);
-        guest_disk_stat->wr_kbs = g_strdup(str_wr_kbs);
+        guest_disk_stat->rd_octet = g_strdup(str_rd_octet);
+        guest_disk_stat->wr_octet = g_strdup(str_wr_octet);
 
         guest_disk_stat_list = g_new0(GuestDiskStatList, 1);
         guest_disk_stat_list->value = guest_disk_stat;
@@ -155,8 +155,8 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
         
         memset(str_rd_ops, 0, 64);
         memset(str_wr_ops, 0, 64);
-        memset(str_rd_kbs, 0, 64);
-        memset(str_wr_kbs, 0, 64);
+        memset(str_rd_octet, 0, 64);
+        memset(str_wr_octet, 0, 64);
     }
     
     

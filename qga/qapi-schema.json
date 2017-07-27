@@ -1106,14 +1106,14 @@
 #
 # @wr_ops: disk device write ops
 #
-# @rd_kbs: disk device read kb/s
+# @rd_octet: disk device read b/s
 #
-# @wr_kbs: disk device write kb/s
+# @wr_octet: disk device write b/s
 #
 # Since: 2.5
 ##
 { 'struct': 'GuestDiskStat',
-  'data': { 'name': 'str', 'rd_ops': 'str', 'wr_ops': 'str', 'rd_kbs': 'str', 'wr_kbs': 'str' } }
+  'data': { 'name': 'str', 'rd_ops': 'str', 'wr_ops': 'str', 'rd_octet': 'str', 'wr_octet': 'str' } }
 
 ##
 # @GuestQueryDiskStat:
