@@ -22,7 +22,6 @@
 #include "qemu/queue.h"
 #include "qemu/host-utils.h"
 #include "qemu/sockets.h"
-#include "utils-posix.h"
 
 #ifndef CONFIG_HAS_ENVIRON
 #ifdef __APPLE__
