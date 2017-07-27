@@ -18,6 +18,34 @@
 #include "utils-posix.h"
 
 
+
+
+int get_file_row_num(const char* filename)
+{
+    FILE *fp;
+    char line[1024];
+    if (NULL == (fp = fopen(filename, "r")))
+    {
+        return 0;
+    }
+    
+    int dev = 0;
+    //counting net if is simply a matter of counting the number of lines...
+    while (NULL != fgets(line, sizeof(line), fp)) 
+    {
+        dev++;
+    }
+    
+    fclose(fp);
+    
+    return dev;
+
+}
+
+
+
+
+
 static void read_cpu_stat(struct cpu_stat* stat, Error **errp)
 {
     if (NULL == stat)
@@ -165,9 +193,6 @@ void calculate_cpu_usage(int delay, char *usage, Error **errp)
 }
 
 
-#undef isdigit
-#define isdigit(ch) ( ( '0' <= (ch)  &&  (ch) >= '9')? 0: 1 )
-
 
 static long mem_search(char *src)
 {
@@ -243,10 +268,6 @@ void calculate_mem_usage(char *usage, Error **errp)
 
 
 
-#define SYSFS_BLOCK "/sys/block"
-
-
-
 //test whether given name is a device or a partition
 static int is_device(char *name, int allow_virtual)
 {
@@ -258,86 +279,12 @@ static int is_device(char *name, int allow_virtual)
     {
         *slash = '!';
     }
-    snprintf(syspath, sizeof(syspath), "%s/%s%s", SYSFS_BLOCK, name,
+    snprintf(syspath, sizeof(syspath), "%s/%s%s", "/sys/block", name,
          allow_virtual ? "" : "/device");
 
     return !(access(syspath, F_OK));
 }
 
-
-//counting devices and partition number
-int get_diskstats_dev_nr(void)
-{
-        FILE *fp;
-        char line[256];
-        if (NULL == (fp = fopen("/proc/diskstats", "r")))
-        {
-            return 0;
-        }
-
-        int dev = 0;
-        //counting devices is simply a matter of counting the number of lines...
-        while (NULL != fgets(line, sizeof(line), fp)) 
-        {
-            dev++;
-        }
-
-        fclose(fp);
-
-        return dev;
-}
-
-
-
-
-//allocate structures for disk devices
-static struct disk_stat_list* alloc_disk_list(int len, Error **errp)
-{
-    if (len <= 0)
-    {
-        error_setg(errp, "invalid param: len.");
-        return NULL;
-    }
-    
-    struct disk_stat_list* disk_list = (struct disk_stat_list*)malloc(sizeof(struct disk_stat_list));
-    if (NULL == disk_list)
-    {
-        error_setg(errp, "failed to malloc struct disk_stat_list.");
-        return NULL;
-    }
-    memset((char*)disk_list, 0, sizeof(struct disk_stat_list));
-    
-    int size = sizeof(struct disk_stat) * len;
-    disk_list->list = (struct disk_stat*) malloc(size);
-    if (NULL != disk_list->list)
-    {
-        memset((char*)disk_list->list, 0, size);
-        disk_list->capacity = len;
-    }
-    else
-    {
-        free(disk_list);
-        error_setg(errp, "failed to malloc struct disk_stat.");
-        return NULL;
-    }
-    
-    return disk_list;
-}
-
-
-//free mem for disk devices
-void free_disk_list(struct disk_stat_list* disk_list)
-{
-    if (NULL != disk_list)
-    {
-        if (NULL != disk_list->list)
-        {
-            free(disk_list->list);
-        }
-        
-        free(disk_list);
-    }
-}
 
 
 //read disk stats
@@ -349,13 +296,12 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
         error_setg(errp, "failed to open /proc/diskstats.");
         return NULL;
     }
-    
-    Error *local_err = NULL;
 
-    struct disk_stat_list* disk_list = alloc_disk_list(length, &local_err);
-    if (local_err) 
+    struct disk_stat_list* disk_list = NULL;
+    STAT_LIST_ALLOCATE(disk_stat, length, disk_list);
+    if (NULL == disk_list) 
     {
-        error_propagate(errp, local_err);
+        error_setg(errp, "failed to malloc disk_stat_list.");
         fclose(fp);
         return NULL;
     }
@@ -429,79 +375,6 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
 
 
 
-int get_netstats_dev_nr(void)
-{
-    FILE *fp;
-    char line[256];
-    if (NULL == (fp = fopen("/proc/net/dev", "r")))
-    {
-        return 0;
-    }
-    
-    int dev = 0;
-    //counting net if is simply a matter of counting the number of lines...
-    while (NULL != fgets(line, sizeof(line), fp)) 
-    {
-        dev++;
-    }
-    
-    fclose(fp);
-    
-    return dev;
-
-}
-
-
-
-//allocate structures for net if
-static struct net_stat_list* alloc_net_list(int len, Error **errp)
-{
-    if (len <= 0)
-    {
-        error_setg(errp, "invalid param: len.");
-        return NULL;
-    }
-    
-    struct net_stat_list* net_list = (struct net_stat_list*)malloc(sizeof(struct net_stat_list));
-    if (NULL == net_list)
-    {
-        error_setg(errp, "failed to malloc struct net_stat_list.");
-        return NULL;
-    }
-    memset((char*)net_list, 0, sizeof(struct net_stat_list));
-    
-    int size = sizeof(struct net_stat) * len;
-    net_list->list = (struct net_stat*) malloc(size);
-    if (NULL != net_list->list)
-    {
-        memset((char*)net_list->list, 0, size);
-        net_list->capacity = len;
-    }
-    else
-    {
-        free(net_list);
-        error_setg(errp, "failed to malloc struct net_list.");
-        return NULL;
-    }
-    
-    return net_list;
-}
-
-
-
-void free_net_list(struct net_stat_list* net_list)
-{
-    if (NULL != net_list)
-    {
-        if (NULL != net_list->list)
-        {
-            free(net_list->list);
-        }
-        
-        free(net_list);
-    }
-}
-
 
 struct net_stat_list* read_netstats(int length, Error **errp)
 {
@@ -529,12 +402,11 @@ struct net_stat_list* read_netstats(int length, Error **errp)
     }
     memset(line, 0, 1024);
 
-    
-    Error *local_err = NULL;
-    struct net_stat_list* net_list = alloc_net_list(length, &local_err);
-    if (local_err) 
+    struct net_stat_list* net_list = NULL;
+    STAT_LIST_ALLOCATE(net_stat, length, net_list);
+    if (NULL == net_list) 
     {
-        error_propagate(errp, local_err);
+        error_setg(errp, "failed to malloc net_stat_list.");
         fclose(fp);
         return NULL;
     }

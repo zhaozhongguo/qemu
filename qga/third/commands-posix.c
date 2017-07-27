@@ -67,7 +67,7 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
     Error *local_err = NULL;
 
     struct timeval tv;
-    int dev_nr = get_diskstats_dev_nr();
+    int dev_nr = get_file_row_num("/proc/diskstats");
     if (dev_nr <= 0)
     {
         error_setg(errp, "no device.");
@@ -90,7 +90,7 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
     if (local_err)
     {
         error_propagate(errp, local_err);
-        free_disk_list(old_disk_list);
+        STAT_LIST_FREE(old_disk_list);
         return NULL;
     }
 
@@ -100,8 +100,8 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
     
     if (new_disk_list->length != old_disk_list->length)
     {
-        free_disk_list(new_disk_list);
-        free_disk_list(old_disk_list);
+        STAT_LIST_FREE(new_disk_list);
+        STAT_LIST_FREE(old_disk_list);
         error_setg(errp, "disk device info changed.");
         return NULL;
     }
@@ -160,8 +160,8 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
     }
     
     
-    free_disk_list(new_disk_list);
-    free_disk_list(old_disk_list);
+    STAT_LIST_FREE(new_disk_list);
+    STAT_LIST_FREE(old_disk_list);
 
     return guest_stat; 
 }
@@ -179,7 +179,7 @@ GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
     Error *local_err = NULL;
 
     struct timeval tv;
-    int dev_nr = get_netstats_dev_nr();
+    int dev_nr = get_file_row_num("/proc/net/dev");
     if (dev_nr <= 0)
     {
         error_setg(errp, "no net if.");
@@ -202,7 +202,7 @@ GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
     if (local_err)
     {
         error_propagate(errp, local_err);
-        free_net_list(old_net_list);
+        STAT_LIST_FREE(old_net_list);
         return NULL;
     }
 
@@ -212,8 +212,8 @@ GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
     
     if (new_net_list->length != old_net_list->length)
     {
-        free_net_list(new_net_list);
-        free_net_list(old_net_list);
+        STAT_LIST_FREE(new_net_list);
+        STAT_LIST_FREE(old_net_list);
         error_setg(errp, "net if info changed.");
         return NULL;
     }
@@ -259,8 +259,8 @@ GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
     }
     
     
-    free_net_list(new_net_list);
-    free_net_list(old_net_list);
+    STAT_LIST_FREE(new_net_list);
+    STAT_LIST_FREE(old_net_list);
 
     return guest_stat; 
 }

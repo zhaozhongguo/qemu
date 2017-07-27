@@ -44,6 +44,66 @@ extern char **environ;
 
 #define DEFAULT_DELAY 5
 
+#undef isdigit
+#define isdigit(ch) ( ( '0' <= (ch)  &&  (ch) >= '9')? 0: 1 )
+
+
+//malloc for stat list
+#define STAT_LIST_ALLOCATE(type, length, out_pList) \
+    do {\
+        if (length <= 0) \
+        { \
+            out_pList = NULL; \
+            break; \
+        } \
+        \
+        struct type##_list* t_list = (struct type##_list*)malloc(sizeof(struct type##_list)); \
+        if (NULL == t_list) \
+        { \
+            out_pList = NULL; \
+            break; \
+        } \
+        memset((char*)t_list, 0, sizeof(struct type##_list)); \
+        \
+        int size = sizeof(struct type) * length; \
+        t_list->list = (struct type*) malloc(size); \
+        if (NULL != t_list->list) \
+        { \
+            memset((char*)t_list->list, 0, size); \
+            t_list->capacity = length; \
+        } \
+        else \
+        { \
+            free(t_list); \
+            out_pList = NULL; \
+            break; \
+        } \
+        \
+        out_pList = t_list; \
+    } while (0)
+
+
+//free for stat list
+#define STAT_LIST_FREE(pList) \
+    do { \
+        if (NULL != pList) \
+        { \
+            if (NULL != pList->list) \
+            { \
+                free(pList->list); \
+            } \
+            \
+            free(pList); \
+        } \
+    } while (0)
+
+
+
+//query file row number
+int get_file_row_num(const char* filename);
+
+
+
 //cpu stat struct
 struct cpu_stat 
 {    
@@ -63,7 +123,8 @@ void calculate_cpu_usage(int delay, char *usage, Error **errp);
 
 
 //mem info struct
-struct mem_stat {
+struct mem_stat 
+{
     long memtotal;
     long memfree;
 };
@@ -100,11 +161,6 @@ struct disk_stat_list
     int capacity;
 };
 
-//counting devices and partition number
-int get_diskstats_dev_nr(void);
-
-//free mem for disk devices
-void free_disk_list(struct disk_stat_list* disk_list);
 
 //read disk stats
 struct disk_stat_list* read_diskstats(int length, Error **errp);
@@ -113,7 +169,8 @@ struct disk_stat_list* read_diskstats(int length, Error **errp);
 //net info struct
 #define MAX_NET_NAME_LEN 32
 
-struct net_stat {
+struct net_stat 
+{
     char if_name[MAX_NET_NAME_LEN];
     unsigned long long if_ibytes;
     unsigned long long if_obytes;
@@ -137,12 +194,6 @@ struct net_stat_list
     int capacity;
 };
 
-
-//counting net if number
-int get_netstats_dev_nr(void);
-
-//free mem for net
-void free_net_list(struct net_stat_list* net_list);
 
 //read net stats
 struct net_stat_list* read_netstats(int length, Error **errp);
