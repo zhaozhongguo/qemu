@@ -114,7 +114,7 @@ struct disk_stat_list* read_diskstats(int length, Error **errp);
 #define MAX_NET_NAME_LEN 32
 
 struct net_stat {
-    unsigned long if_name[MAX_NET_NAME_LEN];
+    char if_name[MAX_NET_NAME_LEN];
     unsigned long long if_ibytes;
     unsigned long long if_obytes;
     unsigned long long if_ipackets;

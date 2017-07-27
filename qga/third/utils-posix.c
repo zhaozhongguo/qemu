@@ -514,14 +514,14 @@ struct net_stat_list* read_netstats(int length, Error **errp)
 
     char line[1024] = {0,};
     //throw away the header tow lines
-    if (NULL == fgets(buf, 1024, fp))
+    if (NULL == fgets(line, 1024, fp))
     {
         error_setg(errp, "failed to open /proc/net/dev.");
         fclose(fp);
         return NULL;
     }
     
-    if (NULL == fgets(buf, 1024, fp))
+    if (NULL == fgets(line, 1024, fp))
     {
         error_setg(errp, "failed to open /proc/net/dev.");
         fclose(fp);
@@ -539,7 +539,7 @@ struct net_stat_list* read_netstats(int length, Error **errp)
         return NULL;
     }
     
-    unsigned long if_name[MAX_NET_NAME_LEN];
+    char if_name[MAX_NET_NAME_LEN];
     unsigned long long if_ibytes;
     unsigned long long if_obytes;
     unsigned long long if_ipackets;
