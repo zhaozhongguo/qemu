@@ -136,7 +136,8 @@ void calculate_cpu_usage(int delay, char *usage, Error **errp)
     
     struct cpu_stat old_cpu_stat;
     read_cpu_stat(&old_cpu_stat, &local_err);
-    if (local_err) {
+    if (local_err) 
+    {
         error_propagate(errp, local_err);
         return;
     }
@@ -145,7 +146,8 @@ void calculate_cpu_usage(int delay, char *usage, Error **errp)
     
     struct cpu_stat new_cpu_stat;
     read_cpu_stat(&new_cpu_stat, &local_err);
-    if (local_err) {
+    if (local_err) 
+    {
         error_propagate(errp, local_err);
         return;
     }
@@ -229,7 +231,8 @@ void calculate_mem_usage(char *usage, Error **errp)
     Error *local_err = NULL;
     struct mem_stat mem;
     read_mem_info(&mem, &local_err);
-    if (local_err) {
+    if (local_err) 
+    {
         error_propagate(errp, local_err);
         return;
     }
@@ -247,17 +250,18 @@ void calculate_mem_usage(char *usage, Error **errp)
 //test whether given name is a device or a partition
 static int is_device(char *name, int allow_virtual)
 {
-	char syspath[PATH_MAX];
-	char *slash;
+    char syspath[PATH_MAX];
+    char *slash;
 
-	/* Some devices may have a slash in their name (eg. cciss/c0d0...) */
-	while ((slash = strchr(name, '/'))) {
-		*slash = '!';
-	}
-	snprintf(syspath, sizeof(syspath), "%s/%s%s", SYSFS_BLOCK, name,
-		 allow_virtual ? "" : "/device");
+    /* Some devices may have a slash in their name (eg. cciss/c0d0...) */
+    while ((slash = strchr(name, '/')))
+    {
+        *slash = '!';
+    }
+    snprintf(syspath, sizeof(syspath), "%s/%s%s", SYSFS_BLOCK, name,
+         allow_virtual ? "" : "/device");
 
-	return !(access(syspath, F_OK));
+    return !(access(syspath, F_OK));
 }
 
 
@@ -304,7 +308,7 @@ static struct disk_stat_list* alloc_disk_list(int len, Error **errp)
     memset((char*)disk_list, 0, sizeof(struct disk_stat_list));
     
     int size = sizeof(struct disk_stat) * len;
-	disk_list->list = (struct disk_stat*) malloc(size);
+    disk_list->list = (struct disk_stat*) malloc(size);
     if (NULL != disk_list->list)
     {
         memset((char*)disk_list->list, 0, size);
@@ -349,7 +353,8 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
     Error *local_err = NULL;
 
     struct disk_stat_list* disk_list = alloc_disk_list(length, &local_err);
-    if (local_err) {
+    if (local_err) 
+    {
         error_propagate(errp, local_err);
         fclose(fp);
         return NULL;
@@ -377,9 +382,9 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
     {
         // major minor name rio rmerge rsect ruse wio wmerge wsect wuse running use aveq
         ret = sscanf(line, "%u %u %s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-	        &major, &minor, dev_name,
-		&rd_ios, &rd_merges_or_rd_sec, &rd_sec_or_wr_ios, &rd_ticks_or_wr_sec,
-		&wr_ios, &wr_merges, &wr_sec, &wr_ticks, &ios_pgr, &tot_ticks, &rq_ticks);
+            &major, &minor, dev_name,
+            &rd_ios, &rd_merges_or_rd_sec, &rd_sec_or_wr_ios, &rd_ticks_or_wr_sec,
+            &wr_ios, &wr_merges, &wr_sec, &wr_ticks, &ios_pgr, &tot_ticks, &rq_ticks);
 
         if (ret == 14) 
         {

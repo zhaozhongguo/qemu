@@ -23,7 +23,8 @@ GuestQueryCpuUsage *qmp_guest_query_cpu_usage(int64_t delay, Error **errp)
     char buf[8] = {0,};
     
     calculate_cpu_usage(delay, buf, &local_err);
-    if (local_err) {
+    if (local_err) 
+    {
         error_propagate(errp, local_err);
         return NULL;
     }
@@ -42,7 +43,8 @@ GuestQueryMemUsage *qmp_guest_query_mem_usage(Error **errp)
     char buf[8] = {0,};
 
     calculate_mem_usage(buf, &local_err);
-    if (local_err) {
+    if (local_err) 
+    {
         error_propagate(errp, local_err);
         return NULL;
     }
