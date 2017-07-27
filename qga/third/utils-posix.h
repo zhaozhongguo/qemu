@@ -22,8 +22,6 @@
 #include "qemu/queue.h"
 #include "qemu/host-utils.h"
 #include "qemu/sockets.h"
-#include "qemu/base64.h"
-#include "qemu/cutils.h"
 #include "utils-posix.h"
 
 #ifndef CONFIG_HAS_ENVIRON
