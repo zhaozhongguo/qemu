@@ -365,7 +365,7 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
     
     unsigned int major = 0;
     unsigned int minor = 0;
-    char dev_name[MAX_NAME_LEN] = {0,};
+    char dev_name[MAX_DISK_NAME_LEN] = {0,};
     unsigned long ios_pgr = 0;
     unsigned long tot_ticks = 0;
     unsigned long rq_ticks = 0;
@@ -385,6 +385,8 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
             &major, &minor, dev_name,
             &rd_ios, &rd_merges_or_rd_sec, &rd_sec_or_wr_ios, &rd_ticks_or_wr_sec,
             &wr_ios, &wr_merges, &wr_sec, &wr_ticks, &ios_pgr, &tot_ticks, &rq_ticks);
+        
+        memset(line, 0, 256);
 
         if (ret == 14) 
         {
@@ -399,7 +401,7 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
                 pStat = &(disk_list->list[disk_list->length++]);
                 pStat->major      = major;
                 pStat->minor      = minor;
-                strncpy(pStat->dk_name, dev_name, MAX_NAME_LEN - 1);
+                strncpy(pStat->dk_name, dev_name, MAX_DISK_NAME_LEN - 1);
                 pStat->rd_ios     = rd_ios;
                 pStat->rd_merges  = rd_merges_or_rd_sec;
                 pStat->rd_sectors = rd_sec_or_wr_ios;
@@ -427,4 +429,175 @@ struct disk_stat_list* read_diskstats(int length, Error **errp)
 
 
 
+int get_netstats_dev_nr(void)
+{
+    FILE *fp;
+    char line[256];
+    if (NULL == (fp = fopen("/proc/net/dev", "r")))
+    {
+        return 0;
+    }
+    
+    int dev = 0;
+    //counting net if is simply a matter of counting the number of lines...
+    while (NULL != fgets(line, sizeof(line), fp)) 
+    {
+        dev++;
+    }
+    
+    fclose(fp);
+    
+    return dev;
+
+}
+
+
+
+//allocate structures for net if
+static struct net_stat_list* alloc_net_list(int len, Error **errp)
+{
+    if (len <= 0)
+    {
+        error_setg(errp, "invalid param: len.");
+        return NULL;
+    }
+    
+    struct net_stat_list* net_list = (struct net_stat_list*)malloc(sizeof(struct net_stat_list));
+    if (NULL == net_list)
+    {
+        error_setg(errp, "failed to malloc struct net_stat_list.");
+        return NULL;
+    }
+    memset((char*)net_list, 0, sizeof(struct net_stat_list));
+    
+    int size = sizeof(struct net_stat) * len;
+    net_list->list = (struct net_stat*) malloc(size);
+    if (NULL != net_list->list)
+    {
+        memset((char*)net_list->list, 0, size);
+        net_list->capacity = len;
+    }
+    else
+    {
+        free(net_list);
+        error_setg(errp, "failed to malloc struct net_list.");
+        return NULL;
+    }
+    
+    return net_list;
+}
+
+
+
+void free_net_list(struct net_stat_list* net_list)
+{
+    if (NULL != net_list)
+    {
+        if (NULL != net_list->list)
+        {
+            free(net_list->list);
+        }
+        
+        free(net_list);
+    }
+}
+
+
+struct net_stat_list* read_netstats(int length, Error **errp)
+{
+    FILE *fp;
+    if (NULL == (fp = fopen("/proc/net/dev", "r")))
+    {
+        error_setg(errp, "failed to open /proc/net/dev.");
+        return NULL;
+    }
+
+    char line[1024] = {0,};
+    //throw away the header tow lines
+    if (NULL == fgets(buf, 1024, fp))
+    {
+        error_setg(errp, "failed to open /proc/net/dev.");
+        fclose(fp);
+        return NULL;
+    }
+    
+    if (NULL == fgets(buf, 1024, fp))
+    {
+        error_setg(errp, "failed to open /proc/net/dev.");
+        fclose(fp);
+        return NULL;
+    }
+    memset(line, 0, 1024);
+
+    
+    Error *local_err = NULL;
+    struct net_stat_list* net_list = alloc_net_list(length, &local_err);
+    if (local_err) 
+    {
+        error_propagate(errp, local_err);
+        fclose(fp);
+        return NULL;
+    }
+    
+    unsigned long if_name[MAX_NET_NAME_LEN];
+    unsigned long long if_ibytes;
+    unsigned long long if_obytes;
+    unsigned long long if_ipackets;
+    unsigned long long if_opackets;
+    unsigned long if_ierrs;
+    unsigned long if_oerrs;
+    unsigned long if_idrop;
+    unsigned long if_ififo;
+    unsigned long if_iframe;
+    unsigned long if_odrop;
+    unsigned long if_ofifo;
+    unsigned long if_ocarrier;
+    unsigned long if_ocolls;
+    unsigned long junk;
+
+    int ret = 0;
+    struct net_stat* pStat = NULL;
+    while (NULL != fgets(line, sizeof(line), fp)) 
+    {
+        // face bytes packets errs drop fifo frame compressed multicast bytes packets errs drop fifo colls carrier
+        ret = sscanf(line, "%s %llu %llu %lu %lu %lu %lu %lu %lu %llu %llu %lu %lu %lu %lu %lu",
+               if_name, &if_ibytes, &if_ipackets, &if_ierrs, &if_idrop, &if_ififo, &if_iframe, &junk, 
+               &junk, &if_obytes, &if_opackets, &if_oerrs, &if_odrop, &if_ofifo, &if_ocolls, &if_ocarrier);
+
+        memset(line, 0, 1024);
+        if (ret != 16)
+        {
+            continue;
+        }
+
+        if (net_list->length < net_list->capacity)
+        {
+            pStat = &(net_list->list[net_list->length++]);
+            strncpy(pStat->if_name, if_name, MAX_NET_NAME_LEN - 1);
+            pStat->if_ibytes   = if_ibytes;
+            pStat->if_obytes   = if_obytes;
+            pStat->if_ipackets = if_ipackets;
+            pStat->if_opackets = if_opackets;
+            pStat->if_ierrs    = if_ierrs;
+            pStat->if_oerrs    = if_oerrs;
+            pStat->if_idrop    = if_idrop;
+            pStat->if_ififo    = if_ififo;
+            pStat->if_iframe   = if_iframe;
+            pStat->if_odrop    = if_odrop;
+            pStat->if_ofifo    = if_ofifo;
+            pStat->if_ocarrier = if_ocarrier;
+            pStat->if_ocolls   = if_ocolls;
+        }
+        else
+        {
+            break;
+        }
+
+    }
+    
+    fclose(fp);
+    
+    return net_list;
+
+}
 

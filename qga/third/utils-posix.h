@@ -42,7 +42,7 @@ extern char **environ;
 #endif
 
 
-#define DEFAULT_DELAY 1
+#define DEFAULT_DELAY 5
 
 //cpu stat struct
 struct cpu_stat 
@@ -72,14 +72,13 @@ void calculate_mem_usage(char *usage, Error **errp);
 
 
 //disk info struct
-
-#define MAX_NAME_LEN 128
+#define MAX_DISK_NAME_LEN 32
 
 struct disk_stat 
 {
     unsigned int major;
     unsigned int minor;
-    char dk_name[MAX_NAME_LEN];
+    char dk_name[MAX_DISK_NAME_LEN];
     unsigned long rd_ios;
     unsigned long rd_merges;
     unsigned long rd_sectors;
@@ -109,5 +108,44 @@ void free_disk_list(struct disk_stat_list* disk_list);
 
 //read disk stats
 struct disk_stat_list* read_diskstats(int length, Error **errp);
+
+
+//net info struct
+#define MAX_NET_NAME_LEN 32
+
+struct net_stat {
+    unsigned long if_name[MAX_NET_NAME_LEN];
+    unsigned long long if_ibytes;
+    unsigned long long if_obytes;
+    unsigned long long if_ipackets;
+    unsigned long long if_opackets;
+    unsigned long if_ierrs;
+    unsigned long if_oerrs;
+    unsigned long if_idrop;
+    unsigned long if_ififo;
+    unsigned long if_iframe;
+    unsigned long if_odrop;
+    unsigned long if_ofifo;
+    unsigned long if_ocarrier;
+    unsigned long if_ocolls;
+};
+
+struct net_stat_list
+{
+    struct net_stat* list;
+    int length;
+    int capacity;
+};
+
+
+//counting net if number
+int get_netstats_dev_nr(void);
+
+//free mem for net
+void free_net_list(struct net_stat_list* net_list);
+
+//read net stats
+struct net_stat_list* read_netstats(int length, Error **errp);
+
 
 #endif

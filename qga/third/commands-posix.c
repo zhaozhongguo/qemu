@@ -126,7 +126,7 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
     {
         old_stat = &(old_disk_list->list[index]);
         new_stat = &(new_disk_list->list[index]);
-        if (0 != strncmp(old_stat->dk_name, new_stat->dk_name, MAX_NAME_LEN))
+        if (0 != strncmp(old_stat->dk_name, new_stat->dk_name, MAX_DISK_NAME_LEN))
         {
             break;
         }
@@ -165,3 +165,103 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
 
     return guest_stat; 
 }
+
+
+
+
+GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
+{
+    if (delay <= 0)
+    {
+        delay = DEFAULT_DELAY;
+    }
+
+    Error *local_err = NULL;
+
+    struct timeval tv;
+    int dev_nr = get_netstats_dev_nr();
+    if (dev_nr <= 0)
+    {
+        error_setg(errp, "no net if.");
+        return NULL;
+    }
+    
+    struct net_stat_list* old_net_list = read_netstats(dev_nr, &local_err);
+    if (local_err) 
+    {
+        error_propagate(errp, local_err);
+        return NULL;
+    }
+    
+    gettimeofday(&tv,NULL);
+    double start = tv.tv_sec + tv.tv_usec/1000000.0;
+    
+    sleep(delay);
+    
+    struct net_stat_list* new_net_list = read_netstats(dev_nr, &local_err);
+    if (local_err)
+    {
+        error_propagate(errp, local_err);
+        free_net_list(old_net_list);
+        return NULL;
+    }
+
+    gettimeofday(&tv, NULL);
+    double end = tv.tv_sec + tv.tv_usec/1000000.0;
+    double time_diff = end - start;
+    
+    if (new_net_list->length != old_net_list->length)
+    {
+        free_net_list(new_net_list);
+        free_net_list(old_net_list);
+        error_setg(errp, "net if info changed.");
+        return NULL;
+    }
+    
+    int index = 0;
+    double receive_byte = 0.0;
+    double send_byte = 0.0;
+    char str_receive_byte[64] = {0,};
+    char str_send_byte[64] = {0,};
+    struct net_stat* old_stat = NULL;
+    struct net_stat* new_stat = NULL;
+
+    GuestQueryNetStat *guest_stat = g_new0(GuestQueryNetStat, 1);
+    GuestNetStat* guest_net_stat = NULL;
+    GuestNetStatList* guest_net_stat_list = NULL;
+    for (; index < new_net_list->length; index++)
+    {
+        old_stat = &(old_net_list->list[index]);
+        new_stat = &(new_net_list->list[index]);
+        if (0 != strncmp(old_stat->if_name, new_stat->if_name, MAX_NET_NAME_LEN))
+        {
+            break;
+        }
+        
+        receive_byte = (double)(new_stat->if_ibytes- old_stat->if_ibytes) / time_diff;
+        send_byte = (double)(new_stat->if_obytes - old_stat->if_obytes) / time_diff;
+        
+        sprintf(str_receive_byte, "%.2f", receive_byte);
+        sprintf(str_send_byte, "%.2f", send_byte);
+ 
+        guest_net_stat = g_new0(GuestNetStat, 1);
+        guest_net_stat->name = g_strdup(new_stat->if_name);
+        guest_net_stat->receive = g_strdup(str_receive_byte);
+        guest_net_stat->send = g_strdup(str_send_byte);
+
+        guest_net_stat_list = g_new0(GuestNetStatList, 1);
+        guest_net_stat_list->value = guest_net_stat;
+        guest_net_stat_list->next = guest_stat->net_stat;
+        guest_stat->net_stat = guest_net_stat_list;
+        
+        memset(str_receive_byte, 0, 64);
+        memset(str_send_byte, 0, 64);
+    }
+    
+    
+    free_net_list(new_net_list);
+    free_net_list(old_net_list);
+
+    return guest_stat; 
+}
+

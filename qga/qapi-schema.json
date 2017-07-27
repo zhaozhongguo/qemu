@@ -1141,4 +1141,48 @@
   'data':    { 'delay': 'int'},
   'returns': 'GuestQueryDiskStat' }
 
+
+
+##
+# @GuestNetStat:
+#
+# Information about guest net stat info.
+#
+# @name: name of the net if
+#
+# @receive: net if receive byte/s
+#
+# @send: net if send write byte/s
+#
+# Since: 2.5
+##
+{ 'struct': 'GuestNetStat',
+  'data': { 'name': 'str', 'receive': 'str', 'send': 'str'} }
+
+##
+# @GuestQueryNetStat:
+#
+# Information about guest net stat.
+#
+# @net_stat: Information about guest net stat
+#
+# Since: 2.5
+##
+{ 'struct': 'GuestQueryNetStat',
+  'data': { 'net_stat': ['GuestNetStat'] } }
+##
+# @guest-query-net-stat:
+#
+# Get information about the guest net.
+#
+# @delay: seconds
+
+# Returns: @GuestQueryNetStat
+#
+# Since: 2.5
+##
+{ 'command': 'guest-query-net-stat',
+  'data':    { 'delay': 'int'},
+  'returns': 'GuestQueryNetStat' }
+
 #=== END === add by zhaozhongguo 2017.07.25
