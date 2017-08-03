@@ -16,9 +16,12 @@ cd -
 ##build win32 qemu-ga
 cd $BASE_DIR/../
 make clean
-./configure --enable-guest-agent --with-vss-sdk=/root/qemu/VSSSDK72 --cross-prefix=x86_64-w64-mingw32-
+./configure --enable-guest-agent --with-vss-sdk=$BASE_DIR/../VSSSDK72 --cross-prefix=x86_64-w64-mingw32-
 make qemu-ga
 
+##recovery env
+cp -rf $MINGW_DIR/include/comutil.h.bak $MINGW_DIR/include/comutil.h
+rm -rf $MINGW_DIR/include/comutil.h.bak
 
 
 ##make install pkg
