@@ -9,7 +9,6 @@
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
  */
-
 #include "qemu/osdep.h"
 #include <wtypes.h>
 #include <powrprof.h>
@@ -31,5 +30,25 @@
 #include "qapi/qmp/qerror.h"
 #include "qemu/queue.h"
 #include "qemu/host-utils.h"
-#include "qemu/base64.h"
+#include "utils-win32.h"
 
+
+GuestQueryCpuUsage *qmp_guest_query_cpu_usage(int64_t delay, Error **errp)
+{
+    return NULL;
+}
+
+GuestQueryMemUsage *qmp_guest_query_mem_usage(Error **errp)
+{
+    return NULL;
+}
+
+GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
+{
+    return NULL;
+}
+
+GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
+{
+    return NULL;
+}
