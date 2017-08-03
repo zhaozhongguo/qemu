@@ -16,6 +16,9 @@
 #include <unistd.h>
 #include <limits.h>
 #include "utils-posix.h"
+#include "qemu/osdep.h"
+#include "qga/guest-agent-core.h"
+#include "qemu-common.h"
 
 
 

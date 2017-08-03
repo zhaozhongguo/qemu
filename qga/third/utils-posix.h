@@ -12,40 +12,10 @@
 #ifndef __UTILS_POSIX_H
 #define __UTILS_POSIX_H
 
-#include "qemu/osdep.h"
-#include <sys/ioctl.h>
-#include <sys/wait.h>
-#include <dirent.h>
-#include "qga/guest-agent-core.h"
-#include "qga-qmp-commands.h"
-#include "qapi/qmp/qerror.h"
-#include "qemu/queue.h"
-#include "qemu/host-utils.h"
-#include "qemu/sockets.h"
-
-#ifndef CONFIG_HAS_ENVIRON
-#ifdef __APPLE__
-#include <crt_externs.h>
-#define environ (*_NSGetEnviron())
-#else
-extern char **environ;
-#endif
-#endif
-
-#if defined(__linux__)
-#include <mntent.h>
-#include <linux/fs.h>
-#include <ifaddrs.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#endif
+#include "qemu/typedefs.h"
 
 
 #define DEFAULT_DELAY 5
-
-#undef isdigit
-#define isdigit(ch) ( ( '0' <= (ch)  &&  (ch) >= '9')? 0: 1 )
 
 
 //malloc for stat list
