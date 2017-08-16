@@ -12,11 +12,6 @@
 
 #define _WIN32_DCOM
 #include <stdio.h>
-#include <comdef.h>  
-#include <wbemidl.h>  
-#include <windows.h>
-
-
 #include <pdh.h>
 #include <pdhmsg.h>
 #include <iphlpapi.h>
@@ -24,149 +19,57 @@
 #include <string>
 #include <list>
 
-
-#define INIT_WMI_QUERY(query) \
-    IWbemServices *pSvc = NULL;  \
-    IWbemLocator *pLoc = NULL; \
-    IEnumWbemClassObject* pEnumerator = NULL;  \
-    HRESULT hres; \
-    do \
-    { \
-        hres =  CoInitializeEx(0, COINIT_MULTITHREADED); \
-        if (FAILED(hres)) \
-        {  \
-            return 1; \
-        } \
-        \
-        hres =  CoInitializeSecurity( \
-            NULL, \
-            -1, \
-            NULL, \
-            NULL, \
-            RPC_C_AUTHN_LEVEL_DEFAULT, \
-            RPC_C_IMP_LEVEL_IMPERSONATE, \
-            NULL, \
-            EOAC_NONE, \
-            NULL \
-            ); \
-        \
-        if (FAILED(hres)) \
-        { \
-            CoUninitialize(); \
-            return 1; \
-        } \
-        \
-        hres = CoCreateInstance(CLSID_WbemLocator, 0, \
-            CLSCTX_INPROC_SERVER, \
-            IID_IWbemLocator, (LPVOID *) &pLoc); \
-        \
-        if (FAILED(hres)) \
-        {  \
-            CoUninitialize();  \
-            return 1; \
-        }  \
-        \
-        hres = pLoc->ConnectServer( \
-             _bstr_t(L"ROOT\\CIMV2"), \
-             NULL, \
-             NULL, \
-             0, \
-             NULL, \
-             0, \
-             0, \
-             &pSvc \
-             ); \
-        \
-        if (FAILED(hres)) \
-        { \
-            pLoc->Release(); \
-            CoUninitialize(); \
-            return 1; \
-        } \
-        \
-        hres = CoSetProxyBlanket( \
-           pSvc, \
-           RPC_C_AUTHN_WINNT, \
-           RPC_C_AUTHZ_NONE, \
-           NULL, \
-           RPC_C_AUTHN_LEVEL_CALL, \
-           RPC_C_IMP_LEVEL_IMPERSONATE, \
-           NULL, \
-           EOAC_NONE \
-        ); \
-        \
-        if (FAILED(hres)) \
-        { \
-            pSvc->Release(); \
-            pLoc->Release(); \
-            CoUninitialize(); \
-            return 1; \
-        } \
-        \
-        hres = pSvc->ExecQuery( \
-            bstr_t("WQL"), \
-            bstr_t(query), \
-            WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, \
-            NULL, \
-            &pEnumerator); \
-        \
-        if (FAILED(hres)) \
-        { \
-            pSvc->Release(); \
-            pLoc->Release(); \
-            CoUninitialize(); \
-            return 1; \
-        } \
-    } while (0)
-    
-  
-    
-#define FINALIZE_WMI_QUERY() \
-    do \
-    { \
-        pSvc->Release(); \
-        pLoc->Release(); \
-        pEnumerator->Release(); \
-        CoUninitialize(); \
-    } while (0)
+#include "utils-win32.h"
 
         
+//network counter
+typedef struct 
+{
+    HCOUNTER counter;
+    char if_name[MAX_NET_NAME_LEN];
+    int type;
+} net_counter;
 
-void calculate_mem_usage(char *usage)
+
+
+int calculate_mem_usage(char *usage)
 {
     if (NULL == usage)
     {
-        return;
+        return FALSE;
     }
     
     MEMORYSTATUS ms;
     ::GlobalMemoryStatus(&ms);
     sprintf(usage, "%d", (int)ms.dwMemoryLoad);
+    
+    return TRUE;
 }
 
 
-void calculate_cpu_usage(int delay, char *usage)
+int calculate_cpu_usage(int delay, char *usage)
 {
+    int ret = FALSE;
     if (NULL == usage)
     {
-        return;
+        return ret;
     }
     
-    HQUERY query;
+    HQUERY query = NULL;
     PDH_STATUS status = PdhOpenQuery(NULL, 0, &query);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     HCOUNTER counter;
     status = PdhAddCounter(query, LPCSTR("\\Processor Information(_Total)\\% Processor Time"), 0, &counter);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
-	
-	delay = delay * 1000;
+    }
+    
+    delay = delay * 1000;
     PdhCollectQueryData(query);
     Sleep(delay);
     PdhCollectQueryData(query);
@@ -175,29 +78,38 @@ void calculate_cpu_usage(int delay, char *usage)
     DWORD dwValue;
     status = PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, &dwValue, &pdhValue);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     sprintf(usage, "%.1f", pdhValue.doubleValue);
+    ret = TRUE;
     
 cleanup:
     if (query)
     {
         PdhCloseQuery(query);
     }
+    
+    return ret;
 }
 
 
 
-void calculate_disk_usage(int delay)
+int calculate_disk_usage(int delay, disk_stat* stat)
 {
-    HQUERY query;
+    int ret = FALSE;
+    if (NULL == stat)
+    {
+        return ret;
+    }
+    
+    HQUERY query = NULL;
     PDH_STATUS status = PdhOpenQuery(NULL, 0, &query);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     HCOUNTER hcWrites;
     HCOUNTER hcReads;
@@ -205,29 +117,29 @@ void calculate_disk_usage(int delay)
     HCOUNTER hcReadOctet;
     status = PdhAddCounter(query, LPCSTR("\\PhysicalDisk(_Total)\\Disk Writes/sec"), 0, &hcWrites);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     status = PdhAddCounter(query, LPCSTR("\\PhysicalDisk(_Total)\\Disk Reads/sec"), 0, &hcReads);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     status = PdhAddCounter(query, LPCSTR("\\PhysicalDisk(_Total)\\Disk Write Bytes/sec"), 0, &hcWriteOctet);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     status = PdhAddCounter(query, LPCSTR("\\PhysicalDisk(_Total)\\Disk Read Bytes/sec"), 0, &hcReadOctet);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
-	delay = delay * 1000;
+    delay = delay * 1000;
     PdhCollectQueryData(query);
     Sleep(delay);
     PdhCollectQueryData(query);
@@ -240,84 +152,69 @@ void calculate_disk_usage(int delay)
 
     status = PdhGetFormattedCounterValue(hcWrites, PDH_FMT_DOUBLE, &dwValue, &pdhValueWrites);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     status = PdhGetFormattedCounterValue(hcReads, PDH_FMT_DOUBLE, &dwValue, &pdhValueReads);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     status = PdhGetFormattedCounterValue(hcWriteOctet, PDH_FMT_DOUBLE, &dwValue, &pdhValueWriteOctet);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
     status = PdhGetFormattedCounterValue(hcReadOctet, PDH_FMT_DOUBLE, &dwValue, &pdhValueReadOctet);
     if (status != ERROR_SUCCESS)
-	{
+    {
         goto cleanup;
-	}
+    }
 
-    //std::cout<<std::endl;
-	//std::cout << pdhValueReadOctet.doubleValue << std::endl;
-    //std::cout << pdhValueWriteOctet.doubleValue << std::endl;
-	//std::cout << pdhValueReads.doubleValue << std::endl;
-	//std::cout << pdhValueWrites.doubleValue << std::endl;
-    //std::cout<<std::endl;
-
+    stat->rd_ops = pdhValueReads.doubleValue;
+    stat->wr_ops = pdhValueWrites.doubleValue;
+    stat->rd_octet = pdhValueReadOctet.doubleValue;
+    stat->wr_octet = pdhValueWriteOctet.doubleValue;
+    
+    ret = TRUE;
+    
 cleanup:
     if (query)
     {
         PdhCloseQuery(query);
     }
+    
+    return ret;
 }
 
 
 
-enum NET_COUNTER_TYPE
+static void mod_network_name(char *name)
 {
-	NET_COUNTER_SENT,
-	NET_COUNTER_RECV,
-};
-
-
-
-typedef struct 
-{
-	HCOUNTER counter;
-	std::string name;
-	NET_COUNTER_TYPE type;
-} net_counter;
-
-
-
-void mod_network_name(char *name)
-{
-	char *cur = name;
-	while ('\0' != *cur)
-	{
-		if ('(' == *cur)
-		{
-			*cur = '[';
-		}
-		else if (')' == *cur)
-		{
-			*cur = ']';
-		}
-		
-		cur++;
-	}
+    char *cur = name;
+    while ('\0' != *cur)
+    {
+        if ('(' == *cur)
+        {
+            *cur = '[';
+        }
+        else if (')' == *cur)
+        {
+            *cur = ']';
+        }
+        
+        cur++;
+    }
 }
 
 
 
-void calculate_network_usage(int delay)
+struct net_stat_list* calculate_network_usage(int delay)
 {
-	//query network interface name
+    //query network interface name
     PIP_ADAPTER_INFO pIpAdapterInfo = new IP_ADAPTER_INFO();
     unsigned long stSize = sizeof(IP_ADAPTER_INFO);
     int nRel = GetAdaptersInfo(pIpAdapterInfo,&stSize);
@@ -328,13 +225,13 @@ void calculate_network_usage(int delay)
         nRel = GetAdaptersInfo(pIpAdapterInfo,&stSize);  
     }
 
-	std::list<std::string> name_list;
+    std::list<std::string> name_list;
     if (ERROR_SUCCESS == nRel)
     {
         while (pIpAdapterInfo)
         {
-			mod_network_name(pIpAdapterInfo->Description);
-			name_list.push_back(std::string(pIpAdapterInfo->Description));
+            mod_network_name(pIpAdapterInfo->Description);
+            name_list.push_back(std::string(pIpAdapterInfo->Description));
             pIpAdapterInfo = pIpAdapterInfo->Next;
         }
     }
@@ -344,7 +241,7 @@ void calculate_network_usage(int delay)
         {
             delete[] pIpAdapterInfo;
         }
-        return;
+        return NULL;
     }
 
     if (pIpAdapterInfo)
@@ -352,89 +249,102 @@ void calculate_network_usage(int delay)
         delete[] pIpAdapterInfo;
     }
 
-	//open pdh query
-    HQUERY query;
+    //open pdh query
+    HQUERY query = NULL;
     PDH_STATUS status = PdhOpenQuery(NULL, 0, &query);
     if (status != ERROR_SUCCESS)
-	{
-		if (query)
-		{
-			PdhCloseQuery(query);
-		}
+    {
+        if (query)
+        {
+            PdhCloseQuery(query);
+        }
 
-		return;
-	}
+        return NULL;
+    }
 
-	//add pdh counter
-	std::string prefix = "\\Network Interface(";
-	std::string sent_suffix = ")\\Bytes Sent/sec";
-	std::string recv_suffix = ")\\Bytes Received/sec";
-	std::list<net_counter*> counter_list;
-	std::list<std::string>::iterator iter = name_list.begin();
-	for (; iter != name_list.end(); iter++)
-	{
-		//sent counter path
-		std::string sent_path = prefix + *iter + sent_suffix;
-		net_counter* pSent_counter = new net_counter();
-		memset((char*)pSent_counter, 0, sizeof(net_counter));
-		status = PdhAddCounter(query, LPCSTR(sent_path.c_str()), 0, &pSent_counter->counter);
-	    if (status == ERROR_SUCCESS)
-		{
-			counter_list.push_back(pSent_counter);
-			pSent_counter->name = *iter;
-			pSent_counter->type = NET_COUNTER_SENT;
-		}
-		else
-		{
-			delete pSent_counter;
-		}
+    //add pdh counter
+    std::string prefix = "\\Network Interface(";
+    std::string sent_suffix = ")\\Bytes Sent/sec";
+    std::string recv_suffix = ")\\Bytes Received/sec";
+    std::list<net_counter*> counter_list;
+    std::list<std::string>::iterator iter = name_list.begin();
+    for (; iter != name_list.end(); iter++)
+    {
+        //sent counter path
+        std::string sent_path = prefix + *iter + sent_suffix;
+        net_counter* pSent_counter = new net_counter();
+        memset((char*)pSent_counter, 0, sizeof(net_counter));
+        status = PdhAddCounter(query, LPCSTR(sent_path.c_str()), 0, &pSent_counter->counter);
+        if (status == ERROR_SUCCESS)
+        {
+            counter_list.push_back(pSent_counter);
+            strncpy(pSent_counter->if_name, (*iter).c_str(), MAX_NET_NAME_LEN - 1);
+            pSent_counter->type = NET_COUNTER_SENT;
+        }
+        else
+        {
+            delete pSent_counter;
+        }
 
-		//recv counter path
-		std::string recv_path = prefix + *iter + recv_suffix;
-		net_counter* pRecv_counter = new net_counter();
-		memset((char*)pRecv_counter, 0, sizeof(net_counter));
-		status = PdhAddCounter(query, LPCSTR(recv_path.c_str()), 0, &pRecv_counter->counter);
-	    if (status == ERROR_SUCCESS)
-		{
-			counter_list.push_back(pRecv_counter);
-			pRecv_counter->name = *iter;
-			pRecv_counter->type = NET_COUNTER_RECV;
-		}
-		else
-		{
-			delete pRecv_counter;
-		}
-	}
+        //recv counter path
+        std::string recv_path = prefix + *iter + recv_suffix;
+        net_counter* pRecv_counter = new net_counter();
+        memset((char*)pRecv_counter, 0, sizeof(net_counter));
+        status = PdhAddCounter(query, LPCSTR(recv_path.c_str()), 0, &pRecv_counter->counter);
+        if (status == ERROR_SUCCESS)
+        {
+            counter_list.push_back(pRecv_counter);
+            strncpy(pRecv_counter->if_name, (*iter).c_str(), MAX_NET_NAME_LEN - 1);
+            pRecv_counter->type = NET_COUNTER_RECV;
+        }
+        else
+        {
+            delete pRecv_counter;
+        }
+    }
 
-	//query data
-	delay = delay * 1000;
+    //query data
+    delay = delay * 1000;
     PdhCollectQueryData(query);
     Sleep(delay);
     PdhCollectQueryData(query);
 
-	//get query result
-	PDH_FMT_COUNTERVALUE pdhValue;
-	DWORD dwValue = 0;
-	std::list<net_counter*>::iterator it = counter_list.begin();
-	for (; it != counter_list.end(); it++)
-	{
-		status = PdhGetFormattedCounterValue((*it)->counter, PDH_FMT_DOUBLE, &dwValue, &pdhValue);
-		if (status == ERROR_SUCCESS)
-		{
-			//std::cout<<(*it)->name<<std::endl;
-			//std::cout<<(*it)->type<<std::endl;
-			//std::cout<<pdhValue.doubleValue<<std::endl;
-			//std::cout<<std::endl;
-		}
+    //get query result
+    int length = (int)counter_list.size();
+    struct net_stat_list* net_stat_list = NULL;
+    STAT_LIST_ALLOCATE(net_stat, length, net_stat_list);
+    if (NULL == net_stat_list)
+    {
+        return NULL;
+    }
+    
+    PDH_FMT_COUNTERVALUE pdhValue;
+    DWORD dwValue = 0;
+    std::list<net_counter*>::iterator it = counter_list.begin();
+    for (; it != counter_list.end(); it++)
+    {
+        status = PdhGetFormattedCounterValue((*it)->counter, PDH_FMT_DOUBLE, &dwValue, &pdhValue);
+        if (status == ERROR_SUCCESS)
+        {
+            if (net_stat_list->length < net_stat_list->capacity)
+            {
+                net_stat* pStat = &(net_stat_list->list[net_stat_list->length++]);
+                strncpy(pStat->if_name, (*it)->if_name, MAX_NET_NAME_LEN - 1);
+                pStat->type = (*it)->type;
+                pStat->value = pdhValue.doubleValue;
+            }
+        }
 
-		delete *it;
-	}
+        delete *it;
+    }
 
     //close pdh query
     if (query)
     {
         PdhCloseQuery(query);
     }
+    
+    return net_stat_list;
 }
 
 

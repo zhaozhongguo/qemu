@@ -11,10 +11,59 @@
  */
 #ifndef __UTILS_WIN32_H
 #define __UTILS_WIN32_H
+#include "utils-common.h"
+
+
+//disk stat struct
+typedef struct 
+{
+    double rd_ops;
+    double wr_ops;
+    double rd_octet;
+    double wr_octet;
+} disk_stat;
 
 
 
+//network pdh counter type
+enum NET_COUNTER_TYPE
+{
+    NET_COUNTER_SENT,
+    NET_COUNTER_RECV,
+};
 
 
+
+//network name length
+#define MAX_NET_NAME_LEN 128
+
+
+//network stat struct
+struct net_stat
+{
+    char if_name[MAX_NET_NAME_LEN];
+    int type;
+    double value;
+};
+
+
+//network stat list struct
+struct net_stat_list
+{
+    struct net_stat* list;
+    int length;
+    int capacity;
+};
+
+
+int calculate_cpu_usage(int delay, char *usage);
+
+int calculate_mem_usage(char *usage);
+
+int calculate_disk_usage(int delay, disk_stat* stat);
+
+struct net_stat_list* calculate_network_usage(int delay);
 
 #endif
+
+
