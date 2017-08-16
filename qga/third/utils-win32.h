@@ -56,14 +56,6 @@ struct net_stat_list
 };
 
 
-int calculate_cpu_usage(int delay, char *usage);
-
-int calculate_mem_usage(char *usage);
-
-int calculate_disk_usage(int delay, disk_stat* stat);
-
-struct net_stat_list* calculate_network_usage(int delay);
-
 #endif
 
 

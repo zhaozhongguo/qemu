@@ -165,10 +165,10 @@ GuestQueryDiskStat *qmp_guest_query_disk_stat(int64_t delay, Error **errp)
         rd_octet = (double)(new_stat->rd_sectors - old_stat->rd_sectors) / time_diff * 512.0;  //one sector => 512byte
         wr_octet = (double)(new_stat->wr_sectors - old_stat->wr_sectors) / time_diff * 512.0;
         
-        sprintf(str_rd_ops, "%.2f", rd_ops);
-        sprintf(str_wr_ops, "%.2f", wr_ops);
-        sprintf(str_rd_octet, "%.2f", rd_octet);
-        sprintf(str_wr_octet, "%.2f", wr_octet);
+        sprintf(str_rd_ops, "%.1f", rd_ops);
+        sprintf(str_wr_ops, "%.1f", wr_ops);
+        sprintf(str_rd_octet, "%.1f", rd_octet);
+        sprintf(str_wr_octet, "%.1f", wr_octet);
  
         guest_disk_stat = g_new0(GuestDiskStat, 1);
         guest_disk_stat->name = g_strdup(new_stat->dk_name);
@@ -270,8 +270,8 @@ GuestQueryNetStat *qmp_guest_query_net_stat(int64_t delay, Error **errp)
         receive_byte = (double)(new_stat->if_ibytes- old_stat->if_ibytes) / time_diff;
         send_byte = (double)(new_stat->if_obytes - old_stat->if_obytes) / time_diff;
         
-        sprintf(str_receive_byte, "%.2f", receive_byte);
-        sprintf(str_send_byte, "%.2f", send_byte);
+        sprintf(str_receive_byte, "%.1f", receive_byte);
+        sprintf(str_send_byte, "%.1f", send_byte);
  
         guest_net_stat = g_new0(GuestNetStat, 1);
         guest_net_stat->name = g_strdup(new_stat->if_name);

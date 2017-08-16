@@ -15,10 +15,6 @@
 #include "utils-common.h"
 
 
-#define DEFAULT_DELAY 5
-
-
-
 //query file row number
 int get_file_row_num(const char* filename);
 

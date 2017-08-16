@@ -12,6 +12,8 @@
 #ifndef __UTILS_COMMON_H
 #define __UTILS_COMMON_H
 
+#define DEFAULT_DELAY 1
+
 
 //malloc for stat list
 #define STAT_LIST_ALLOCATE(type, length, out_pList) \
