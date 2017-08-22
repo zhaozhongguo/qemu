@@ -10,7 +10,7 @@ fi
 ##replace comutil.h
 cd $BASE_DIR
 cp -rf $MINGW_DIR/include/comutil.h $MINGW_DIR/include/comutil.h.bak
-cp -rf comutil.h $MINGW_DIR/include
+cp -rf win32/comutil.h $MINGW_DIR/include
 cd -
 
 ##build win32 qemu-ga
